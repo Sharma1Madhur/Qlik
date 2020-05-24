@@ -1,0 +1,95 @@
+// The below code snippet is for the creation of Master Calendar. Sample_fct table can be substituted with the Fact table in the dataset 
+
+// Step 1 - Determining min and max date
+[Fct_Date]:
+Load Max(%Key_Date) as maxDate,      // If the %Key_Date field is not in date format then you have to first convert it using Date#() 
+Min(%Key_Date)as minDate
+Resident Sample_fct;
+
+Let vMinDate = Peek('minDate',0,'Fct_Date');
+Let vMaxDate = Peek('maxDate',0,'Fct_Date');
+Let vToday = Today();
+
+// Step 2 -Generate the date range between min and max dates
+TempCal:
+LOAD
+	Date($(vMinDate) + RowNo() -1) as Dat
+	AutoGenerate $(vMaxDate) - $(vMinDate) + 1;
+
+//Step 3 - Create master calendar with necessary date fields and Flags
+Calendar:
+Load 
+	Date(Dat) as %Key_Date,
+    
+// 	Basic Date dimension
+	Year(Dat) as Year,
+
+//	Month
+    Month(Dat) as Month,
+    Num(Month(Dat)) as MonthNum,
+	MonthName(Dat) as MonthName,
+    
+// 	Quater
+	Ceil(Month(Dat)/3) as QtrNum,
+    dual('Q' & ceil(month(Dat)/3) & '-' & Year(Dat),ceil(month(Dat)/3)+Year(Dat)*10) as QtrYear,
+    
+// 	week 
+	Week(Dat) as WeekNum,  
+    
+//	Day    
+    Day(Dat) as DayNum,
+	DayNumberOfYear(Dat) as DayOfYear,
+    
+// 	Year flags
+	inyear(Dat, '$(vToday)', 0) * -1 AS CY,								//Current year
+	inyear(Dat, '$(vToday)', -1) * -1 AS FPY,							//First prior year
+	inyear(Dat, '$(vToday)', -2) * -1 AS SPY,							//Second prior year	
+	
+//	Year-to-date flags
+	inyeartodate(Dat, '$(vToday)', 0) * -1 AS CYTD,						//Current year-to-date
+	inyeartodate(Dat, '$(vToday)', -1) * -1 AS FPYTD,					//First prior year-to-date
+	inyeartodate(Dat, '$(vToday)', -2) * -1 AS SPYTD,					//Second prior year-to-date	
+	
+//	Quarter flags
+	inquarter(Dat, '$(vToday)', 0) * -1 AS CQ,							//Current quarter
+	inquarter(Dat, '$(vToday)', -4) * -1 AS FPQ,						//First prior quarter, same quarter last year
+	inquarter(Dat, '$(vToday)', -8) * -1 AS SPQ,						//Second prior quarter, same quarter two years ago	
+	
+//	Quarter-to-date flags
+	inquartertodate(Dat, '$(vToday)', 0) * -1 AS CQTD,					//Current quarter-to-date
+	inquartertodate(Dat, '$(vToday)', -4) * -1 AS FPQTD,				//First prior quarter-to-date, same quarter last year
+	inquartertodate(Dat, '$(vToday)', -8) * -1 AS SPQTD,				//Second prior quarter-to-date, same quarter two years ago	
+	
+//	Month flags
+	inmonth(Dat, '$(vToday)', 0) * -1 AS CM,							//Current month
+	inmonth(Dat, '$(vToday)', -1) * -1 AS PM,							//Previous month
+	inmonth(Dat, '$(vToday)', -12) * -1 AS FPM,							//First prior month, same month last year
+	inmonth(Dat, '$(vToday)', -24) * -1 AS SPM,							//Second prior month, same month two years ago	
+	
+//	Month-to-date flags
+	inmonthtodate(Dat, '$(vToday)', 0) * -1 AS CMTD,					//Current month-to-date
+	inmonthtodate(Dat, '$(vToday)', -1) * -1 AS PMTD,					//Previous month-to-date	
+	inmonthtodate(Dat, '$(vToday)', -12) * -1 AS FPMTD,					//First prior month-to-date, same month last year
+	inmonthtodate(Dat, '$(vToday)', -24) * -1 AS SPMTD,					//Second prior month-to-date, same month two years ago		
+
+//	Week flags (use addmonths() to ensure proper week)
+//	Use inlunarweek() if the you want weeks (7-day periods) starting from January 1. This is different from the inweek() function
+	inweek(Dat, '$(vToday)', 0) * -1 AS CW,								//Current week
+	inweek(Dat, addmonths('$(vToday)', -12), 0) * -1 AS FPW,			//First prior quarter, same week last year	
+	inweek(Dat, addmonths('$(vToday)', -24), 0) * -1 AS SPW,			//Second prior quarter, same week two years ago
+	
+//	Week-to-date flags (use addmonths() to ensure proper week)
+//	Use inlunarweek() if the you want weeks (7-day periods) starting from January 1. This is different from the inweek() function
+	inweektodate(Dat, '$(vToday)', 0) * -1 AS CWTD,						//Current week-to-date
+	inweektodate(Dat, addmonths('$(vToday)', -12), 0) * -1 AS FPWTD,	//First prior week-to-date
+	inweektodate(Dat, addmonths('$(vToday)', -24), 0) * -1 AS SPWTD,	//Second prior week-to-date	
+
+//	Day flags (use addmonths() to ensure proper day)
+	inday(Dat, '$(vToday)', 0) * -1 AS CD,								//Current day
+	inday(Dat, addmonths('$(vToday)', -12), 0) * -1 AS FPD,				//First prior quarter, same day last year	
+	inday(Dat, addmonths('$(vToday)', -24), 0) * -1 AS SPD				//Second prior quarter, same day two years ago
+
+Resident TempCal;
+
+// Dropping temp table
+Drop tables Fct_Date,TempCal;
