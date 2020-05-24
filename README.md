@@ -1,2 +1,2 @@
 # Qlik
-The repository consist of Qlik Sense code snippets.
+The repository consist of Qlik code snippets.
